@@ -73,8 +73,8 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
 
 
 # 准备训练、验证和测试数据生成器
-lookback = 1440
-step = 6
+lookback = 720
+step = 3
 delay = 144
 batch_size = 128
 
@@ -110,49 +110,13 @@ val_steps = (300000 - 200001 - lookback) // batch_size
 test_steps = (len(float_data) - 300001 - lookback) // batch_size
 
 '''
-# 用一个只使用两个全连接层的模型去训练
+# 使用一个一维卷积层和GRU层结合的模型
 model = Sequential()
-model.add(layers.Flatten(input_shape=(lookback // step, float_data.shape[-1])))
-model.add(layers.Dense(32, activation='relu'))
-model.add(layers.Dense(1))
-
-model.compile(optimizer=RMSprop(), loss='mae')
-history = model.fit_generator(train_gen, steps_per_epoch=500,
-                              epochs=20,
-                              validation_data=val_gen,
-                              validation_steps=val_steps)
-'''
-'''
-# 使用一个GRU模型
-model = Sequential()
-model.add(layers.GRU(32, input_shape=(None, float_data.shape[-1])))
-model.add(layers.Dense(1))
-
-model.compile(optimizer=RMSprop(), loss='mae')
-history = model.fit_generator(train_gen, steps_per_epoch=500,
-                              epochs=20,
-                              validation_data=val_gen,
-                              validation_steps=val_steps)
-'''
-'''
-# 使用一个正则化后的GRU模型
-model = Sequential()
-model.add(layers.GRU(32,
-          dropout=0.2,
-          recurrent_dropout=0.2,
-          input_shape=(None, float_data.shape[-1])))
-model.add(layers.Dense(1))
-
-model.compile(optimizer=RMSprop(), loss='mae')
-history = model.fit_generator(train_gen, steps_per_epoch=500,
-                              epochs=40,
-                              validation_data=val_gen,
-                              validation_steps=val_steps)
-'''
-'''
-# 使用一个双向的GRU模型
-model = Sequential()
-model.add(layers.Bidirectional(layers.GRU(32), input_shape=(None, float_data.shape[-1])))
+model.add(layers.Conv1D(32, 5, activation='relu',
+                        input_shape=(None, float_data.shape[-1])))
+model.add(layers.MaxPooling1D(3))
+model.add(layers.Conv1D(32, 5, activation='relu'))
+model.add(layers.GRU(32, dropout=0.1, recurrent_dropout=0.5))
 model.add(layers.Dense(1))
 
 model.compile(optimizer=RMSprop(), loss='mae')
@@ -162,14 +126,15 @@ history = model.fit_generator(train_gen, steps_per_epoch=500,
                               validation_steps=val_steps)
 '''
 
-# 使用一个正则化后多层的GRU模型
+# 使用简单一维卷积层的模型
 model = Sequential()
-model.add(layers.GRU(32,
-                     dropout=0.1,
-                     recurrent_dropout=0.5,
-                     return_sequences=True,
-                     input_shape=(None, float_data.shape[-1])))
-model.add(layers.GRU(64, activation='relu', dropout=0.1, recurrent_dropout=0.5))
+model.add(layers.Conv1D(32, 5, activation='relu',
+                        input_shape=(None, float_data.shape[-1])))
+model.add(layers.MaxPooling1D(3))
+model.add(layers.Conv1D(32, 5, activation='relu'))
+model.add(layers.MaxPooling1D(3))
+model.add(layers.Conv1D(32, 5, activation='relu'))
+model.add(layers.GlobalMaxPool1D())
 model.add(layers.Dense(1))
 
 model.compile(optimizer=RMSprop(), loss='mae')
